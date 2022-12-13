@@ -9,6 +9,8 @@ appID = int(sys.argv[1])
 def main():
     result = client.get_product_info(apps=[appID])
     result = result['apps']
+    if appID not in result:
+        return "none"
     result = result[appID]
     if "config" not in result:
         return "none"
