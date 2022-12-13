@@ -76,8 +76,60 @@ namespace Steam_Validator
             }
         }
 
+        void runPython(string appID)
+        {
+            var cmd = "C:/Users/l4legenda/Projects/Steam-Validator/test.py " + appID;
+            var process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "C:/Users/l4legenda/AppData/Local/Programs/Python/Python311/python.exe",
+                    Arguments = cmd,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                },
+                EnableRaisingEvents = true
+            };
+            process.ErrorDataReceived += Process_OutputDataReceived;
+            process.OutputDataReceived += Process_OutputDataReceived;
+
+            process.Start();
+            process.BeginErrorReadLine();
+            process.BeginOutputReadLine();
+            process.WaitForExit();
+            Console.Read();
+        }
+
+        static void Process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            Console.WriteLine(e.Data);
+            if (e.Data == "none")
+            {
+                /*
+                Process currentProcess = Process.GetCurrentProcess();
+                currentProcess.CloseMainWindow();
+                */
+            } 
+            else
+            {
+                Process[] currentProcess = Process.GetProcessesByName(e.Data);
+
+                foreach (Process process in currentProcess)
+                {
+                    Console.WriteLine("currentProcess");
+                    Console.WriteLine(process.MainWindowTitle.ToLower());
+                    process.CloseMainWindow();
+                }
+            }
+            
+        }
+
         void Verify()
         {
+            
+
             string Path = txtLibFoldersPath.Text;
             MaxTries = (int)nuMaxTries.Value;
 
@@ -107,9 +159,9 @@ namespace Steam_Validator
                     while (!success && _try++ < MaxTries)
                     {
                         try
-                        {
+                        {                      
                             UpdateText("Verifying " + (i + 1) + "/" + AppIDs.Count + " (0%)...");
-
+                            Console.WriteLine(1);
                             ProcessStartInfo psi = new ProcessStartInfo("steam://validate/" + AppIDs[i]);
 
                             Process verify = new Process();
@@ -125,7 +177,9 @@ namespace Steam_Validator
 
                                 for (int j = 0; j < steams.Length; j++)
                                 {
-                                    if (steams[j].MainWindowTitle.ToLower().StartsWith("validating steam files"))
+                                    Console.WriteLine(steams[j].MainWindowTitle.ToLower());
+                                    // проверка файлов steam — 100% завершено
+                                    if (steams[j].MainWindowTitle.ToLower().StartsWith("проверка файлов steam"))
                                     {
                                         //ShowWindow(steams[j].MainWindowHandle, ShowWindowEnum.ForceMinimized);
                                         verifyWindow = steams[j];
@@ -136,6 +190,7 @@ namespace Steam_Validator
 
                                 await Task.Delay(50);
                             }
+
 
 
                             int Tries = 0;
@@ -150,7 +205,7 @@ namespace Steam_Validator
 
                                 try
                                 {
-                                    Percentage = MainWindowTitle.Substring("validating steam files - ".Length);
+                                    Percentage = MainWindowTitle.Substring("проверка файлов steam - ".Length);
                                     Percentage = Percentage.Substring(0, Percentage.IndexOf('%'));
                                     UpdateText("Verifying " + (i + 1) + "/" + AppIDs.Count + " ("+ Percentage + "%)...");
                                 }
@@ -170,7 +225,7 @@ namespace Steam_Validator
                                     Tries = 0;
                                 }
 
-                                if (MainWindowTitle.EndsWith(" 100% complete"))
+                                if (MainWindowTitle.EndsWith(" 100% завершено"))
                                 {
                                     verifyWindow.CloseMainWindow();
                                     success = true;
@@ -188,6 +243,19 @@ namespace Steam_Validator
 
                     if (!success)
                         Failures.Add(AppIDs[i]);
+
+                    ProcessStartInfo psrun = new ProcessStartInfo("steam://run/" + AppIDs[i]);
+                    Process rungame = new Process();
+                    rungame.StartInfo = psrun;
+                    rungame.Start();
+
+                    await Task.Delay(15000);
+                    if (AppIDs[i] != "228980")
+                    {
+                        Console.WriteLine("AppIDs: " + AppIDs[i]);
+                        runPython(AppIDs[i]);
+                    }
+                   
                 }
 
                 UpdateText();
@@ -198,11 +266,12 @@ namespace Steam_Validator
                     WindowState = FormWindowState.Normal;
                     TopMost = true;
                     TopMost = false;
-
+                    /*
                     if (Failures.Count > 0)
                         MessageBox.Show("Validation Complete\n\nFailed AppIDs:\n" + string.Join("\n", Failures), "Steam Validator", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     else
                         MessageBox.Show("Validation Complete", "Steam Validator", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    */
                 });
             });
             thread.Start();
